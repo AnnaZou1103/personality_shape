@@ -1,11 +1,13 @@
 import os
 import openai
+from openai import OpenAI
 import re
 import json
-from utils.krippendorff_alpha import krippendorff 
+from utils.krippendorff_alpha import krippendorff
 from sklearn.metrics import cohen_kappa_score
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import csv
+
 
 class RaLLM():
     def __init__(self, api_key):
@@ -15,9 +17,11 @@ class RaLLM():
         Parameter:
         - api_key (str): Your OpenAI API key.
         """
-        openai.api_key = api_key
+        self.client = OpenAI(
+            api_key=api_key
+        )
 
-    def codebook2prompt(codebook, format, num_of_examples,language = 'en', has_context=False):
+    def codebook2prompt(self, codebook, format, num_of_examples, language='en', has_context=False):
         """
         This function converts a codebook in tabular format to a natural language prompt.
 
@@ -36,49 +40,55 @@ class RaLLM():
         code_set = []
         instruction = ''
         examples = ''
-        if language =='fr':
+        if language == 'fr':
             context_text = " dans le contexte de "
-        elif language =='ch':
+        elif language == 'ch':
             context_text = " 在以下情景下 "
         else:
             context_text = " in the context of "
 
         for n in range(num_of_examples):
             if has_context:
-                examples += codebook['example_'+str(n+1)]+ context_text + codebook['context_'+str(n+1)]+ '; '
+                examples += codebook['example_' + str(n + 1)] + context_text + codebook['context_' + str(n + 1)] + '; '
             else:
-                examples += codebook['example_'+str(n+1)]+ '; '
+                examples += codebook['example_' + str(n + 1)] + '; '
 
         codebook['examples'] = examples
-        if format=='example':
-            if language =='fr':
+        if format == 'example':
+            if language == 'fr':
                 for index, row in codebook.iterrows():
-                    instruction += str(row['examples'])+ "est un exemple de " + str(row['code'])+ ",car "+ row['description']+ ";"
+                    instruction += str(row['examples']) + "est un exemple de " + str(row['code']) + ",car " + row[
+                        'description'] + ";"
                     code_set.append(str(row['code']))
-            elif language =='ch':
+            elif language == 'ch':
                 for index, row in codebook.iterrows():
-                    instruction += "这段文本的编码是" + str(row['examples'])+ "" + str(row['code'])+ ",因为"+ row['description']+ ";"
+                    instruction += "这段文本的编码是" + str(row['examples']) + "" + str(row['code']) + ",因为" + row[
+                        'description'] + ";"
                     code_set.append(str(row['code']))
             else:
                 for index, row in codebook.iterrows():
-                    instruction += str(row['examples'])+ "is an example of " + str(row['code'])+ ",becasue "+ row['description']+ ";"
+                    instruction += str(row['examples']) + "is an example of " + str(row['code']) + ",becasue " + row[
+                        'description'] + ";"
                     code_set.append(str(row['code']))
         else:
-            if language =='fr':
+            if language == 'fr':
                 for index, row in codebook.iterrows():
-                    instruction += "CODE: " + str(row['code'])+ "; LA DESCRIPTION: "+ row['description']+ "; EXAMPLES: "+ row['examples']+ ";"
+                    instruction += "CODE: " + str(row['code']) + "; LA DESCRIPTION: " + row[
+                        'description'] + "; EXAMPLES: " + row['examples'] + ";"
                     code_set.append(str(row['code']))
-            elif language =='ch':
+            elif language == 'ch':
                 for index, row in codebook.iterrows():
-                    instruction += "\n编码: "+ str(row['code'])+ " 描述: " + str(row['description'])+ "; 例子: "+ row['examples']+ ";"
+                    instruction += "\n编码: " + str(row['code']) + " 描述: " + str(row['description']) + "; 例子: " + \
+                                   row['examples'] + ";"
                     code_set.append(str(row['code']))
             else:
                 for index, row in codebook.iterrows():
-                    instruction += "CODE: " + str(row['code'])+ "; DESCRIPTION: "+ row['description']+ "; EXAMPLES: "+ row['examples']
+                    instruction += "CODE: " + str(row['code']) + "; DESCRIPTION: " + row[
+                        'description'] + "; EXAMPLES: " + row['examples']
                     code_set.append(str(row['code']))
         return instruction, code_set
 
-    def prompt_writer(data, context, codebook, code_set, meta_prompt, none_code, language='en',cot = 0):
+    def prompt_writer(self, data, context, codebook, code_set, meta_prompt, none_code, language='en', cot=0):
         """
         This function generates a complete natural language prompt for coding based on the given parameters.
 
@@ -98,15 +108,15 @@ class RaLLM():
 
         candidates = ''
         for code in code_set:
-            if candidates :
-                candidates += ' or '+str(code)
+            if candidates:
+                candidates += ' or ' + str(code)
             else:
                 candidates += str(code)
 
         if language == 'fr':
             instruction = """
                 Décidez si une [texte] est 
-                """+ candidates + '. Basé sur le livre de codes suivant qui comprend la description de chaque code et quelques exemples. Notez que le code est uniquement pour le [texte] et non le contexte, mais le contexte doit être pris en compte lors de la prise de décision.'
+                """ + candidates + '. Basé sur le livre de codes suivant qui comprend la description de chaque code et quelques exemples. Notez que le code est uniquement pour le [texte] et non le contexte, mais le contexte doit être pris en compte lors de la prise de décision.'
             if cot:
                 last_instruction = 'Choisissez parmi les candidats suivants : ' + candidates + " Avant de prendre une décision, réfléchissons étape par étape avec le contexte et expliquons."
             else:
@@ -128,7 +138,7 @@ class RaLLM():
         else:
             instruction = """
                 Classify the [text] into 
-                """+ candidates + '. Based on the following codebook that includes the description of each code and a few examples. Note that the code is only for the [text] not the context, but the context should be considered when making the decision.'
+                """ + candidates + '. Based on the following codebook that includes the description of each code and a few examples. Note that the code is only for the [text] not the context, but the context should be considered when making the decision.'
             if cot:
                 last_instruction = 'Choose from the following candidates: ' + candidates + " Before making a decision, let's think through step by step with the context and explain."
             else:
@@ -136,7 +146,7 @@ class RaLLM():
             codebook_label = 'Codebook: '
             sentence_label = 'Text: ['
             context_label = 'Context: '
-        
+
         if none_code:
             if language == 'fr':
                 last_instruction += " ou 'NA' si aucun de ces codes ne s'applique."
@@ -145,20 +155,22 @@ class RaLLM():
             else:
                 last_instruction += " or 'NA' if none of these codes applies."
 
-        complete_prompt = "\n".join([meta_prompt,instruction, codebook_label+codebook+'\n', context_label+context+'\n', sentence_label+data+']\n', last_instruction])
+        complete_prompt = "\n".join(
+            [meta_prompt, instruction, codebook_label + codebook + '\n', context_label + context + '\n',
+             sentence_label + data + ']\n', last_instruction])
         return complete_prompt
 
-    #this decorator is used to retry if the rate limits are exceeded
+    # this decorator is used to retry if the rate limits are exceeded
     @retry(
         reraise=True,
         stop=stop_after_attempt(1000),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=(retry_if_exception_type(openai.error.Timeout)
-            | retry_if_exception_type(openai.error.APIError)
-            | retry_if_exception_type(openai.error.APIConnectionError)
-            | retry_if_exception_type(openai.error.RateLimitError)),
+        retry=(retry_if_exception_type(openai.APITimeoutError)
+            | retry_if_exception_type(openai.APIError)
+            | retry_if_exception_type(openai.APIConnectionError)
+            | retry_if_exception_type(openai.RateLimitError)),
     )
-    def coder(complete_prompt, engine="text-davinci-003", voter = 1):
+    def coder(self, complete_prompt, engine="text-davinci-003", voter=1):
         """
         This function uses the OpenAI API to code a given sentence based on the provided complete_prompt.
 
@@ -171,16 +183,16 @@ class RaLLM():
         """
         # See API document at https://beta.openai.com/docs/api-reference/completions/create
         # max tokens: 100 is enough for single question. 
-        # temperature: 0 for greedy (argmax). 
-        if engine=='text-davinci-003':
-            response = openai.Completion.create(engine=engine, prompt=complete_prompt, suffix=None, max_tokens=500, temperature=0.0)
-        else:
-            response = openai.ChatCompletion.create(
-            model = engine, 
-                messages=[{"role": "user", "content": complete_prompt}], temperature=0.0, n = voter)
+        # temperature: 0 for greedy (argmax).
+        response = self.client.chat.completions.create(
+            model=engine,
+            max_tokens=1000,
+            messages=[{"role": "user", "content": complete_prompt}],
+            temperature=0.0,
+            n=voter)
         return response
-    
-    def llm_translator(data, language1, language2, engine="text-davinci-003"):
+
+    def llm_translator(self, data, language1, language2, engine="davinci-002"):
         """
         This function uses the OpenAI API to translate a given sentence from one language to another.
 
@@ -194,17 +206,19 @@ class RaLLM():
         - str: The translated sentence.
         """
         instruction = """\
-                translate the following sentence from """+ language1 + """ to """ + language2 + """.
+                translate the following sentence from """ + language1 + """ to """ + language2 + """.
                 """
 
         # See API document at https://beta.openai.com/docs/api-reference/completions/create
         # max tokens: 100 is enough for single question. 
         # temperature: 0 for greedy (argmax). 
-        response = openai.Completion.create(engine=engine, prompt="\n".join([instruction,'Sentence: '+data]), suffix=None, max_tokens=100, temperature=0.0)
+        response = self.client.chat.completions.create(model=engine,
+                                                       messages=[{"role": "user", "content": "\n".join([instruction, 'Sentence: ' + data])}],
+                                                    max_tokens=100, temperature=0.0)
         response = response["choices"][0]["text"].strip()
         return response
 
-    def scale_taker(prompt, item, engine="gpt-3.5-turbo"):
+    def scale_taker(self, prompt, item, engine="gpt-3.5-turbo"):
         """
         This function is used to take the scale for a single item using the specified language model engine.
         
@@ -216,18 +230,19 @@ class RaLLM():
         Returns:
         - str: The scale value for the provided item.
         """
-        if engine=='text-davinci-003':
-            response = openai.Completion.create(engine=engine, prompt="\n".join([prompt, item]), suffix=None, max_tokens=100, temperature=0.0)
+        if engine == 'text-davinci-003':
+            response = self.client.chat.completions.create(model=engine, messages=[{"role": "user", "content": "\n".join([prompt, item])}],
+                                                           max_tokens=100, temperature=0.0)
             response = response["choices"][0]["text"].strip()
         else:
-            completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", 
+            completion = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": "\n".join([prompt, item])}], temperature=0.0)
-            response = completion["choices"][0]['message']["content"].strip() 
-        result = re.search(r'\d+', response).group()   
+            response = completion["choices"][0]['message']["content"].strip()
+        result = re.search(r'\d+', response).group()
         return result
-    
-    def scale_taker_seq(prompt, item, engine="gpt-3.5-turbo"):
+
+    def scale_taker_seq(self, prompt, item, engine="gpt-3.5-turbo"):
         """
         This function is used to take the scale for each item in a single conversation session with mutiple turns.
         It takes the prompt, and then adds the item one by one, asking the model to give the scale for each item one by one.
@@ -245,17 +260,17 @@ class RaLLM():
         context.append({'role': 'user', 'content': prompt})
         for i in item:
             context.append({'role': 'user', 'content': i})
-            completion = openai.ChatCompletion.create(
-            model = engine, 
-                    messages=context
-            ,temperature=0.0)
+            completion = self.client.chat.completions.create(
+                model=engine,
+                messages=context,
+                temperature=0.0)
             response = completion["choices"][0]['message']["content"].strip()
-            result = re.search(r'\d+', response).group()               
+            result = re.search(r'\d+', response).group()
             context.append({'role': 'assistant', 'content': result})
             response_list.append(result)
         return response_list
 
-    def item_constructor(items, num):
+    def item_constructor(self, items, num):
         """
         This function constructs a list of items with a specified number of elements.
 
@@ -277,7 +292,7 @@ class RaLLM():
                 break
         return item_list
 
-    def cohens_kappa_measure(code, result):
+    def cohens_kappa_measure(self, code, result):
         """
         This function is used to calculate the Cohen's Kappa measure.
 
@@ -289,8 +304,8 @@ class RaLLM():
         - float: The Cohen's Kappa measure, a value between -1 and 1 representing the level of agreement between the two coders.
         """
         return cohen_kappa_score(code, result)
-    
-    def krippendorff_alpha_measure(code, result, code_set):
+
+    def krippendorff_alpha_measure(self, code, result, code_set):
         """
         This function is used to calculate the Krippendorff's alpha measure.
 
@@ -305,8 +320,8 @@ class RaLLM():
         code_converted = [code_set.index(i) for i in code]
         result_converted = [code_set.index(i) for i in result]
         return krippendorff.krippendorff([code_converted, result_converted], missing_items='')
-    
-    def code_clean(results, code_set):
+
+    def code_clean(self, results, code_set):
         """
         Cleans the codes returned by the model to ensure that only valid codes from the code set are used. Non-existent codes are remained unchanged.
 
