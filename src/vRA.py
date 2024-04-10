@@ -1,4 +1,3 @@
-import os
 import openai
 from openai import OpenAI
 import re
@@ -7,19 +6,24 @@ from utils.krippendorff_alpha import krippendorff
 from sklearn.metrics import cohen_kappa_score
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import csv
+import anthropic
+from anthropic import HUMAN_PROMPT, AI_PROMPT
 
 
 class RaLLM():
-    def __init__(self, api_key):
+    def __init__(self, api_key, model='gpt'):
         """
         Initialize the RaLLM class with the OpenAI API key.
 
         Parameter:
         - api_key (str): Your OpenAI API key.
         """
-        self.client = OpenAI(
-            api_key=api_key
-        )
+        self.model_type = model
+        if model == 'gpt':
+            self.client = OpenAI(api_key=api_key)
+        elif model == 'claude':
+            self.client = anthropic.Anthropic(api_key=api_key)
+
 
     def codebook2prompt(self, codebook, format, num_of_examples, language='en', has_context=False):
         """
@@ -166,9 +170,9 @@ class RaLLM():
         stop=stop_after_attempt(1000),
         wait=wait_exponential(multiplier=1, min=4, max=10),
         retry=(retry_if_exception_type(openai.APITimeoutError)
-            | retry_if_exception_type(openai.APIError)
-            | retry_if_exception_type(openai.APIConnectionError)
-            | retry_if_exception_type(openai.RateLimitError)),
+               | retry_if_exception_type(openai.APIError)
+               | retry_if_exception_type(openai.APIConnectionError)
+               | retry_if_exception_type(openai.RateLimitError)),
     )
     def coder(self, complete_prompt, engine="text-davinci-003", voter=1):
         """
@@ -184,13 +188,25 @@ class RaLLM():
         # See API document at https://beta.openai.com/docs/api-reference/completions/create
         # max tokens: 100 is enough for single question. 
         # temperature: 0 for greedy (argmax).
-        response = self.client.chat.completions.create(
-            model=engine,
-            max_tokens=1000,
-            messages=[{"role": "user", "content": complete_prompt}],
-            temperature=0.0,
-            n=voter)
-        return response
+        if self.model_type == 'gpt':
+            response = self.client.chat.completions.create(
+                model=engine,
+                max_tokens=1000,
+                messages=[{"role": "user", "content": complete_prompt}],
+                temperature=0.0,
+                n=voter
+            )
+            return [response.choices[i].message.content for i in range(len(response.choices))]
+        elif self.model_type == 'claude':
+            response = self.client.messages.create(
+                model=engine, #"claude-3-opus-20240229"
+                max_tokens=1024,
+                messages=[
+                    {"role": "user", "content": complete_prompt}
+                ],
+                temperature=0.0,
+            )
+            return [response.content[i].text for i in range(len(response.content))]
 
     def llm_translator(self, data, language1, language2, engine="davinci-002"):
         """
@@ -213,8 +229,9 @@ class RaLLM():
         # max tokens: 100 is enough for single question. 
         # temperature: 0 for greedy (argmax). 
         response = self.client.chat.completions.create(model=engine,
-                                                       messages=[{"role": "user", "content": "\n".join([instruction, 'Sentence: ' + data])}],
-                                                    max_tokens=100, temperature=0.0)
+                                                       messages=[{"role": "user", "content": "\n".join(
+                                                           [instruction, 'Sentence: ' + data])}],
+                                                       max_tokens=100, temperature=0.0)
         response = response["choices"][0]["text"].strip()
         return response
 
@@ -231,13 +248,16 @@ class RaLLM():
         - str: The scale value for the provided item.
         """
         if engine == 'text-davinci-003':
-            response = self.client.chat.completions.create(model=engine, messages=[{"role": "user", "content": "\n".join([prompt, item])}],
+            response = self.client.chat.completions.create(model=engine, messages=[
+                {"role": "user", "content": "\n".join([prompt, item])}],
                                                            max_tokens=100, temperature=0.0)
             response = response["choices"][0]["text"].strip()
         else:
             completion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": "\n".join([prompt, item])}], temperature=0.0)
+                messages=[{"role": "user", "content": "\n".join([prompt, item])}],
+                temperature=0.0
+            )
             response = completion["choices"][0]['message']["content"].strip()
         result = re.search(r'\d+', response).group()
         return result
@@ -263,7 +283,8 @@ class RaLLM():
             completion = self.client.chat.completions.create(
                 model=engine,
                 messages=context,
-                temperature=0.0)
+                temperature=0.0
+            )
             response = completion["choices"][0]['message']["content"].strip()
             result = re.search(r'\d+', response).group()
             context.append({'role': 'assistant', 'content': result})
