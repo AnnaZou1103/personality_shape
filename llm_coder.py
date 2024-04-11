@@ -94,7 +94,7 @@ def deductive_coding(args):
 
 def personality_simulation(args):
     # Read data and codebook from CSV files
-    lm = RaLLM(args.key)
+    lm = RaLLM(args.key, args.model_type)
     instructions = pd.read_csv(args.instruction, delimiter=";")
 
     # Iterate through each row of the data
@@ -120,12 +120,15 @@ def personality_simulation(args):
                           row['item'] + ".\"")
             else:
                 prompt = "For the following task, respond in a way that matches this description: \"" + row['persona_description'] + "\" Considering the statement, please indicate the extent to which you agree or disagree on a scale from 1 to 5 (where 1 = \"disagree strongly\", 2 = \"disagree a little\", 3 = \"neither agree nor disagree\", 4 = \"agree a little\", and 5 = \"agree strongly\"): \"" + row['item'] + ".\""
-        response = lm.coder(prompt, engine=args.model, voter=args.voter)
-        result_voters = [response.choices[i].message.content for i in range(len(response.choices))]
+
+        result_voters = lm.coder(prompt, engine=args.model, voter=args.voter)
         result = majority_vote(result_voters).strip()
         results.append(result)
 
         idx += 1
+        if idx == 1:
+            print('Example prompt:', prompt)
+
         if idx % args.batch_size == 0:
             print("Load {}% prompts".format(idx / len(instructions) * 100))
             instructions['result'] = pd.Series(results)
@@ -140,7 +143,7 @@ def personality_simulation(args):
 
 def real_world_task_simulation(args):
     # Read data and codebook from CSV files
-    lm = RaLLM(args.key)
+    lm = RaLLM(args.key, args.model_type)
     instructions = pd.read_csv(args.instruction, delimiter=";")
 
     # Iterate through each row of the data
@@ -188,8 +191,9 @@ def main():
     argparser.add_argument('--language', type=str, default='en')
     argparser.add_argument('--key', type=str, default=None)
     argparser.add_argument('--model', type=str, default='gpt-4-0613')
+    argparser.add_argument('--model_type', type=str, default='claude')
     argparser.add_argument('--verification', type=int, default=0)
-    argparser.add_argument('--batch_size', type=int, default=50)
+    argparser.add_argument('--batch_size', type=int, default=100)
     argparser.add_argument('--na_label', type=int, default=0)
     argparser.add_argument('--cot', type=int, default=0)
     args = argparser.parse_args()

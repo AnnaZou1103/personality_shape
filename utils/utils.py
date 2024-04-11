@@ -136,7 +136,7 @@ def generate_shape_instructions():
     item_file.close()
 
 def post_process():
-    items = pd.read_csv('results/interview_simulation_BFI.csv')
+    items = pd.read_csv('results/gpt4/shape_BFI.csv')
     new_result = []
     for score in items['result']:
         if len(re.findall('\d', score))>0:
@@ -144,31 +144,31 @@ def post_process():
         else: new_result.append(score)
 
     items['result'] = pd.Series(new_result)
-    items.to_csv('results/interview_simulation_BFI_new.csv', encoding="utf_8_sig", index=False)
+    items.to_csv('results/gpt4/shape_BFI_new.csv', encoding="utf_8_sig", index=False)
 
 def convert_format():
     item_file = open("prompts/bfi2_items.txt", "r")
     items = item_file.read().splitlines()
     
-    results = pd.read_csv('results/interview_simulation_BFI_new.csv')
+    results = pd.read_csv('results/gpt4/shape_BFI_new.csv')
     final_results = {}
     
     for idx, row in results.iterrows():
-        profile = row['simulation_profile']
-        # profile = row['persona_description']
+        # profile = row['simulation_profile']
+        profile = row['personal_profile']
         # instruction = row['test_instruction']
         key = profile
         if key not in final_results.keys():
             # final_results[profile+instruction] = {'test_instruction': instruction, row['item']: row['result']}
-            # final_results[row['persona_description']] = {row['item']: row['result']}
-            final_results[row['simulation_profile']] = {row['item']: row['result']}
+            final_results[row['personal_profile']] = {row['item']: row['result']}
+            # final_results[row['simulation_profile']] = {row['item']: row['result']}
         else:
             # final_results[profile+instruction][row['item']] = row['result']
-            # final_results[row['persona_description']][row['item']] = row['result']
-            final_results[row['simulation_profile']][row['item']] = row['result']
+            final_results[row['personal_profile']][row['item']] = row['result']
+            # final_results[row['simulation_profile']][row['item']] = row['result']
 
 
-    with open('results/interview_simulation_BFI_new_v2.csv','w') as csv_file:
+    with open('results/gpt4/shape_BFI_new_v2.csv','w') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['']+items)
         for key, value in final_results.items():
@@ -302,11 +302,11 @@ if __name__ == "__main__":
     # generate_shape_instructions()
     # generate_extreme_personal_profile()
     # generate_people_simulation_instructions()
-    # post_process()
-    # convert_format()
+    post_process()
+    convert_format()
 
     # preprocess_transcript()
     # random_persona_selection()
-    id_mapping()
+    # id_mapping()
 
 
