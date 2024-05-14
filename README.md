@@ -18,13 +18,14 @@ pip install -r requirements.txt
 Run the preprocess script preprocess.py to generate the instructions, and then run main script main.py to simulate the corresponding personalities to give responses. The results will be stored in ./output directory.
 
 ### Arguments
-You can customize the behavior of the script by modifying the command-line arguments:
+You can customize the behavior of the main.py script by modifying the command-line arguments:
 ```
 --instruction: Path to the input CSV file containing the prompt instructions.
 --save: Path to the output CSV file where the results will be saved.
---mode: The mode in which to run the script. Choose 'personality_trait' or 'real_world_task'.
+--task: The mode in which to run the script. Choose 'force_choice', 'score_scale' or 'real_world_simulation'.
 --voter: The number of geneartions for each data point. If n > 1, the final code is an aggreation of mutiple generations by majority vote. Default is 1.
 --api_key: Your OpenAI API key. If not provided, the script will attempt to use the OPENAI_API_KEY environment variable.
---model: The name of the GPT model to use (e.g., 'gpt-4-0613', 'text-davinci-003'). Default is 'gpt-4-0613'.
+--model_type: The type of LLMs to use. Choose 'gpt' or 'claude'.
+--model_name: The name of the GPT or Claude model to use. Default is 'gpt-3.5-turbo'.
 --batch_size: The batch size for saving the coding progress. Default is 100 (reuslts will be saved for everyon 100 data points).
 ```
