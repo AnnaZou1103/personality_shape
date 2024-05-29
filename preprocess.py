@@ -317,3 +317,21 @@ if __name__ == "__main__":
     elif args.description == 'transcript':
         generate_transcript_based_instruction(args.questionnaire)
         id_mapping(args.questionnaire)
+
+    # profile_file = open("output/description/personal_profile_sample.txt")
+    # personalities_all = profile_file.read().splitlines()
+    #
+    # profile_file_100 = open("output/description/personal_profile_100.txt")
+    # personalities_100 = profile_file_100.read().splitlines()
+
+    # random_index_list = random.sample(range(0, len(personalities_all)), 200)
+    # res_list = np.take(personalities_all, random_index_list)
+
+    # res_list = []
+    # for item in personalities_all:
+    #     if item not in personalities_100:
+    #         res_list.append(item)
+    #
+    # with open('output/description/personal_profile_200.txt', 'w') as file:
+    #     file.writelines('\n'.join(res_list))
+

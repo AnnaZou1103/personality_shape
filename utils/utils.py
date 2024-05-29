@@ -34,14 +34,14 @@ def add_item(new_result, key, profile, item, result):
         new_result[profile][item] = result
 
 
-def post_process(processed_file_path, column_name, lm, prompt, prefix, max_trail_num=3):
-    questionnaire_name = processed_file_path.split('_')[1]
-    test_item_file = open(f"../data/{questionnaire_name}_items.txt", "r")
+def post_process(processed_file_path, questionnaire_name, column_name, lm, prompt, prefix, max_trail_num=10):
+    test_item_file = open(f"data/{questionnaire_name}_items.txt", "r")
     test_items = test_item_file.read().splitlines()
     sentence_list = prompt.split("\"")
 
     result_items = pd.read_csv(processed_file_path)
     new_result = {}
+    invalid_num = 0
     for profile, item, result in zip(result_items[column_name], result_items['item'], result_items['result']):
         score = match_score(result)
         key = profile
@@ -58,14 +58,18 @@ def post_process(processed_file_path, column_name, lm, prompt, prefix, max_trail
                 score = match_score(result)
 
             if isinstance(score, int) or len(score) == 1:
-                print(result)
+                # print(result)
                 add_item(new_result, key, profile, item, score)
             else:
-                print('wrong:', result)
+                invalid_num +=1
+                print('Invalid:', result)
                 add_item(new_result, key, profile, item, result)
+
+    print('Invalid response number:', invalid_num)
 
     save_path = processed_file_path.split('.csv')[0] + '_processed.csv'
     print('Save to :', save_path)
+
     with open(save_path, 'w') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow([''] + test_items)

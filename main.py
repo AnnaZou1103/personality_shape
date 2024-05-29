@@ -17,8 +17,7 @@ def personality_simulation(args):
     results = []
     column_name = ''
     for index, row in instructions.iterrows():
-        time.sleep(3)
-
+        time.sleep(2)
         # Generate the prompt
         if 'personal_profile' in instructions.keys():
             prefix = "I'm "
@@ -65,13 +64,14 @@ def personality_simulation(args):
     instructions['result'] = pd.Series(results)
     instructions.to_csv(args.save, encoding="utf_8_sig", index=False)
 
-    post_process(args.save, column_name, lm, prompt, prefix)
+    post_process(args.save, args.questionnaire, column_name, lm, prompt, prefix)
 
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--instruction', type=str, default='output/instructions/instruction_example.csv')
     argparser.add_argument('--save', type=str, default='output/results/results_example.csv')
+    argparser.add_argument('--questionnaire', type=str, choices=['hexaco', 'bfi60', 'ipip300', 'force_choice'])
     argparser.add_argument('--task', type=str, choices=['force_choice', 'score_scale', 'real_world_simulation'])
     argparser.add_argument('--voter', type=int, default=1)
     argparser.add_argument('--model_type', type=str, default='gpt')
@@ -81,3 +81,12 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     personality_simulation(args)
+
+    # lm = LLM(args.api_key, args.model_type, args.model_name, args.voter)
+    # prefix = "I'm "
+    # column_name = 'personal_profile'
+    # prompt = (f"For the following task, respond in a way that matches this description: \"\" "
+    #           f"Considering the statement, please indicate the extent to which you agree or disagree on a "
+    #           f"scale from 1 to 5 (where 1 = \"disagree strongly\", 2 = \"disagree a little\", 3 = \"neither "
+    #           f"agree nor disagree\", 4 = \"agree a little\", and 5 = \"agree strongly\"): \".\"")
+    # post_process(args.save, args.questionnaire, column_name, lm, prompt, prefix)

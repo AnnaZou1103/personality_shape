@@ -124,13 +124,3 @@ class LLM:
         code_converted = [code_set.index(i) for i in code]
         result_converted = [code_set.index(i) for i in result]
         return krippendorff.krippendorff([code_converted, result_converted], missing_items='')
-
-
-if __name__ == "__main__":
-    lm = LLM("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", "gpt", "gpt-3.5-turbo", 1)
-    prompt = (f"For the following task, respond in a way that matches this description: \"\" "
-              f"Considering the statement, please indicate the extent to which you agree or disagree on a "
-              f"scale from 1 to 5 (where 1 = \"disagree strongly\", 2 = \"disagree a little\", 3 = \"neither "
-              f"agree nor disagree\", 4 = \"agree a little\", and 5 = \"agree strongly\"): \".\"")
-    prefix = "I'm "
-    post_process("../output/results/gpt3.5/shape_bfi60_100.csv", "personal_profile", lm, prompt, prefix, max_trail_num=3)
