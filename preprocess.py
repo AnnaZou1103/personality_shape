@@ -188,7 +188,7 @@ def generate_interview_simulation_instructions(questionnaire):
     question_file = open("data/chatbot_question.txt", "r")
     questions = question_file.read().splitlines()
 
-    results = pd.read_csv('data/static-v-bot-study.csv')
+    results = pd.read_csv('data/human_interview/static-v-bot-study.csv')
     answers = results.iloc[:, 99:131]
     answers.columns = questions
     questions.sort(key=sort_function)
@@ -290,6 +290,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--description', type=str,
                            choices=['persona_description', 'personal_profile', 'interview', 'transcript'])
+    argparser.add_argument('--sample_num', type=int, required=False)
     argparser.add_argument('--questionnaire', type=str, choices=['bfi60', 'ipip300', 'hexaco', 'force_choice'])
     argparser.add_argument('--persona_save_path', type=str,
                            default='output/description/persona_description.txt')
@@ -302,15 +303,7 @@ if __name__ == "__main__":
         random_persona_selection(args.persona_save_path)
         generate_persona_instructions(args.persona_save_path, args.questionnaire)
     elif args.description == 'personal_profile':  # Shape simulation
-        generate_personal_profile(args.profile_save_path)
-        generate_personal_profile(args.profile_save_path, 6, 5)
-        # profile_file = open("output/description/personal_profile.txt")
-        #
-        # personalities = profile_file.read().splitlines()
-        # random_index_list = random.sample(range(0, len(personalities)), 100)
-        # res_list = np.take(personalities, random_index_list)
-        # with open('output/description/sampled_personal_profile_sample.txt', 'w') as file:
-        #     file.writelines('\n'.join(res_list))
+        generate_personal_profile(args.profile_save_path, args.sample_num, 5)
         generate_shape_instructions(args.profile_save_path, args.questionnaire)
     elif args.description == 'interview':
         generate_interview_simulation_instructions(args.questionnaire)
@@ -318,20 +311,4 @@ if __name__ == "__main__":
         generate_transcript_based_instruction(args.questionnaire)
         id_mapping(args.questionnaire)
 
-    # profile_file = open("output/description/personal_profile_sample.txt")
-    # personalities_all = profile_file.read().splitlines()
-    #
-    # profile_file_100 = open("output/description/personal_profile_100.txt")
-    # personalities_100 = profile_file_100.read().splitlines()
-
-    # random_index_list = random.sample(range(0, len(personalities_all)), 200)
-    # res_list = np.take(personalities_all, random_index_list)
-
-    # res_list = []
-    # for item in personalities_all:
-    #     if item not in personalities_100:
-    #         res_list.append(item)
-    #
-    # with open('output/description/personal_profile_200.txt', 'w') as file:
-    #     file.writelines('\n'.join(res_list))
 

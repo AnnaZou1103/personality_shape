@@ -3,8 +3,6 @@ from collections import Counter
 import csv
 import pandas as pd
 
-
-
 def majority_vote(output):
     '''
     This function takes a list called output and returns the most common element
@@ -18,13 +16,20 @@ def majority_vote(output):
 def match_score(result):
     score_dic = {1: "disagree strongly", 2: "disagree a little", 3: "neither agree nor disagree",
                  4: "agree a little", 5: "agree strongly"}
-    if len(re.findall('\d', result)) > 0:
-        return re.findall('\d', result)[0]
+    search_result = re.findall('\d', result)
+    if len(search_result) == 1 and 1 <= int(search_result[0]) <= 5:
+        return int(search_result[0])
     else:
+        count = 0
+        final_score = 0
         for score, statement in score_dic.items():
             if statement in result.lower():
-                return score
-        return result
+                count += 1
+                final_score = int(score)
+        if count == 1:
+            return final_score
+        else:
+            return result
 
 
 def add_item(new_result, key, profile, item, result):
@@ -35,7 +40,7 @@ def add_item(new_result, key, profile, item, result):
 
 
 def post_process(processed_file_path, questionnaire_name, column_name, lm, prompt, prefix, max_trail_num=10):
-    test_item_file = open(f"data/{questionnaire_name}_items.txt", "r")
+    test_item_file = open(f"./data/{questionnaire_name}_items.txt", "r")
     test_items = test_item_file.read().splitlines()
     sentence_list = prompt.split("\"")
 
@@ -45,7 +50,7 @@ def post_process(processed_file_path, questionnaire_name, column_name, lm, promp
     for profile, item, result in zip(result_items[column_name], result_items['item'], result_items['result']):
         score = match_score(result)
         key = profile
-        if isinstance(score, int) or len(score) == 1:
+        if isinstance(score, int):
             add_item(new_result, key, profile, item, score)
         else:
             index = 0
@@ -61,14 +66,14 @@ def post_process(processed_file_path, questionnaire_name, column_name, lm, promp
                 # print(result)
                 add_item(new_result, key, profile, item, score)
             else:
-                invalid_num +=1
+                invalid_num += 1
                 print('Invalid:', result)
                 add_item(new_result, key, profile, item, result)
 
     print('Invalid response number:', invalid_num)
 
     save_path = processed_file_path.split('.csv')[0] + '_processed.csv'
-    print('Save to :', save_path)
+    print('Save to:', save_path)
 
     with open(save_path, 'w') as csv_file:
         writer = csv.writer(csv_file)
