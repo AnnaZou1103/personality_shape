@@ -3,6 +3,7 @@ from collections import Counter
 import csv
 import pandas as pd
 
+
 def majority_vote(output):
     '''
     This function takes a list called output and returns the most common element

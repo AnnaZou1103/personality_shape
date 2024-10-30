@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 from src.model import LLM
-from utils.utils import majority_vote, post_process
+from src.utils import majority_vote, post_process
 
 import argparse
 
